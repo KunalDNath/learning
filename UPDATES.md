@@ -4,6 +4,7 @@
 
 - Added a Google Apps Script backend that stores shared assignment and exam configuration data plus question PDFs in the owner's Drive.
 - Added Drive reads and password-protected admin writes, with one-time migration of assignments already saved in that browser.
+- Added private Drive storage for student written answers and photo/PDF answer sheets; admins can fetch and review them from another browser.
 - Added deployment instructions and a Drive URL setting in `cloud-config.js`.
 
 ## Learning and exams
@@ -16,8 +17,8 @@
 
 ## Assignments and PDFs
 
-- Added an admin portal for creating, locking, unlocking, and deleting assignments, setting due dates, and attaching question-paper PDFs.
-- Added online PDF viewing for question papers and admin previews for submitted answers.
+- Added assignments with typed questions and optional PDF/image attachments, plus explicit view and download actions.
+- Added student written answers or JPG/PNG/PDF uploads up to 5 MB, with Drive-backed submissions and admin review across browsers.
 - Added a 5 MB upload limit and browser-side PDF cleanup after 10 days.
 - Prepared a Cloudflare R2 storage path for question PDFs, with an hourly Worker cleanup that removes objects after their 10-day expiry.
 

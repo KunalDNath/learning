@@ -54,6 +54,7 @@
 
 @media(max-width:760px){.nav-item>span.mobile-nav-label{font-size:8px!important;width:auto;text-align:center;color:inherit}}
 .cloud-status{font-size:9px;color:#728f7d;max-width:210px;text-align:right}.cloud-status.error{color:#a84d54}.today-label{font-variant-numeric:tabular-nums}
+.question-image-preview{display:block;max-width:100%;max-height:65vh;object-fit:contain;margin:12px auto;border-radius:8px;background:#faf7f6}.assignment-materials .small-button{border:0;cursor:pointer}
 
 /* Clear, step-by-step exam administration */
 .exam-admin-panel{padding:24px;background:#fff;border-color:#eee3e0}

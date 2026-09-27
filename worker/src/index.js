@@ -52,7 +52,9 @@ export default {
         const length = Number(request.headers.get("Content-Length") || 0);
         if (!/^[\w-]{1,120}$/.test(id) || length > 5 * 1024 * 1024) return json({ error: "Invalid PDF or file exceeds 5 MB" }, 413, cors);
         const uploadedAt = Date.now();
-        await env.PDFS.put(id, request.body, { httpMetadata: { contentType: "application/pdf" }, customMetadata: { uploadedAt: String(uploadedAt), expiresAt: String(uploadedAt + 10 * 24 * 60 * 60 * 1000) } });
+        const contentType = request.headers.get("Content-Type") || "application/pdf";
+        if (!["application/pdf", "image/png", "image/jpeg"].includes(contentType)) return json({ error: "Only PDF, PNG, or JPG attachments are supported" }, 400, cors);
+        await env.PDFS.put(id, request.body, { httpMetadata: { contentType }, customMetadata: { uploadedAt: String(uploadedAt), expiresAt: String(uploadedAt + 10 * 24 * 60 * 60 * 1000) } });
         return json({ ok: true }, 200, cors);
       }
       if (url.pathname === "/api/admin/exam-config" && request.method === "PUT") {
@@ -68,7 +70,7 @@ export default {
         const id = decodeURIComponent(url.pathname.slice("/api/files/".length));
         const file = await env.PDFS?.get(id);
         if (!file) return json({ error: "File not found or expired" }, 404, cors);
-        return new Response(file.body, { headers: { ...cors, "Content-Type": "application/pdf", "Cache-Control": "no-store" } });
+        return new Response(file.body, { headers: { ...cors, "Content-Type": file.httpMetadata?.contentType || "application/pdf", "Cache-Control": "no-store" } });
       }
       return json({ error: "Not found" }, 404, cors);
     } catch (error) {
@@ -100,7 +102,7 @@ function stateCheck(value) {
 function publicAssignments(assignments = []) {
   return assignments.map(item => ({
     ...item,
-    questionPdf: item.questionPdf ? { id: item.questionPdf.id, name: item.questionPdf.name } : null
+    questionPdf: item.questionPdf ? { id: item.questionPdf.id, name: item.questionPdf.name, mimeType: item.questionPdf.mimeType || "application/pdf" } : null
   }));
 }
 
