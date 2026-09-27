@@ -1,5 +1,11 @@
 # Site updates
 
+## Google Drive storage
+
+- Added a Google Apps Script backend that stores shared assignment and exam configuration data plus question PDFs in the owner's Drive.
+- Added Drive reads and password-protected admin writes, with one-time migration of assignments already saved in that browser.
+- Added deployment instructions and a Drive URL setting in `cloud-config.js`.
+
 ## Learning and exams
 
 - Added compiler design lessons on lexical analysis, syntax analysis, and LR parsing, including LR(0), SLR(1), and CLR(1).

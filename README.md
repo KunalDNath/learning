@@ -4,7 +4,7 @@ A responsive, browser-based learning workspace for Soumi. It uses plain HTML, CS
 
 ## Run it
 
-Open `index.html` in a browser, or serve this folder with an editor's Live Server extension. State is stored in that browser's local storage.
+Serve this folder with an editor's Live Server extension or publish it as a static site. Learner progress and submissions stay in the browser; shared course assignments can use Google Drive after the setup below.
 
 ## Learning path
 
@@ -29,18 +29,16 @@ The learning path includes the LR(0) and SLR(1) topics and worked grammar exerci
 
 PDF question extraction uses [Mozilla PDF.js](https://mozilla.github.io/pdf.js/getting_started/) loaded from a CDN. The PDF must contain selectable text; scanned image-only papers require OCR and are not auto-converted.
 
-## Shared admin storage setup
+## Store shared assignments in Google Drive
 
-The site source is the GitHub repository `KunalDNath/learning` (`https://github.com/KunalDNath/learning.git`). The optional Cloudflare Worker connects the static site to shared storage. Assignment metadata and exam settings are committed to a separate private GitHub repository. This separation keeps admin data and exam answers out of the website's source repository. PDFs are stored in Cloudflare R2, not Git history, and the Worker removes expired objects once an hour after their 10-day retention period.
+The `drive-backend/Code.gs` Google Apps Script stores assignment metadata, exam settings, and assignment question PDFs in a folder in your Drive. It runs as your Google account, so no Cloudflare account, GitHub token, or OAuth client is needed.
 
-1. Create a **private** GitHub repository named `learning-private-data` under the configured owner, initialized with a README on the `main` branch. Create a fine-grained GitHub token with **Contents: Read and write** access to that repository.
-2. Install Wrangler and sign in to Cloudflare. From the `worker` directory, create the bucket with `npx wrangler r2 bucket create learning-soumi-pdfs`.
-3. Set the exact public website origin in `worker/wrangler.toml` (`ALLOWED_ORIGIN`; for GitHub Pages the origin is `https://kunaldnath.github.io`). Check the `DATA_REPO` owner/repository values too.
-4. In `worker`, add Worker secrets with `npx wrangler secret put GITHUB_TOKEN`, `npx wrangler secret put ADMIN_PASSWORD`, and `npx wrangler secret put SESSION_SECRET`. Use a long random session secret. Do not put these values in this repository or in chat.
-5. Deploy from `worker` with `npx wrangler deploy`. Copy the resulting `workers.dev` URL into `cloud-config.js` as `window.SYNTAX_STUDIO_API_URL`, commit and publish the site.
+1. Open [script.google.com](https://script.google.com/) while signed in to the Google account whose Drive should hold the data. Create a project and replace its `Code.gs` with the contents of `drive-backend/Code.gs`.
+2. In the Apps Script project, open **Project Settings → Script Properties** and add `ADMIN_PASSWORD` with a strong password. Keep this password private; it authorizes changes to the shared assignments and exam configuration.
+3. Choose **Deploy → New deployment → Web app**. Set **Execute as** to **Me** and **Who has access** to **Anyone**, then deploy and approve the Google Drive permissions. Copy the web app URL ending in `/exec`.
+4. Paste that URL into `window.SYNTAX_STUDIO_DRIVE_URL` in `cloud-config.js`, publish the site, and open it from the published URL.
+5. Open **Admin portal**, enter the same password, and create an assignment. The first save creates a `Syntax Studio shared data` folder in your Drive. Other browsers can then see the shared assignments by opening the published site and visiting Tasks.
 
-The admin password is configured once as a Worker secret; it is not saved in the browser or GitHub. A signed 30-day admin session is saved in the browser, so reopening the portal in that browser does not prompt again while the session is valid. Admins on another device sign in with the same Worker password. Assignments and exam settings then load from the shared private repo. The GitHub token stays server-side in the Worker.
+The web app must be reachable by anyone so the learner can read course data; write operations require the admin password. Question PDFs are stored in that Drive folder and served through the script. The admin password is held in the current browser tab's session storage. On first admin sign-in, assignments already saved in that browser are copied to Drive if the shared assignment list is empty.
 
-Learner uploads/submissions and learner progress are still browser-local in this version. Only assignments, question PDFs and exam settings sync across devices. Exam questions and answers are served to this client-side app for scoring, so the answer key is not suitable for a high-stakes or proctored exam.
-
-Without the Worker URL configured, the site continues to use browser-only storage. PDFs in that local mode are purged when the app is open or next opened. In cloud mode, the Worker Cron Trigger handles PDF deletion independently of browser use.
+Learner submissions and learning progress remain in each learner browser's local storage. The exam answer key is delivered to the client for scoring, so this app is not suitable for a high-stakes or proctored exam. If the Drive URL is blank, the app falls back to browser-only storage. The earlier Cloudflare Worker configuration remains available as an alternate backend.

@@ -2,10 +2,55 @@
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const cloudApiBase = String(window.SYNTAX_STUDIO_API_URL || '').replace(/\/$/, '');
+  const driveApiUrl = String(window.SYNTAX_STUDIO_DRIVE_URL || '').trim();
+  const drivePasswordKey = 'syntaxStudio.driveAdminPassword';
+  const getDrivePassword = () => { try { return sessionStorage.getItem(drivePasswordKey) || ''; } catch { return ''; } };
+  let preSyncAssignments=[];
+  try { preSyncAssignments=JSON.parse(localStorage.getItem('syntaxStudio.assignments')||'[]'); } catch {}
   const adminTokenKey = 'syntaxStudio.adminToken';
   const getAdminToken = () => { try { return localStorage.getItem(adminTokenKey) || ''; } catch { return ''; } };
-  let cloudStatusText = cloudApiBase ? 'Connecting to shared storage...' : 'Browser-only storage (cloud sync not configured)';
+  let cloudStatusText = (driveApiUrl || cloudApiBase) ? 'Connecting to shared storage...' : 'Browser-only storage (cloud sync not configured)';
   function showCloudStatus(message, error=false) { cloudStatusText=message; const node=$('#cloudStatus'); if(node){node.textContent=message;node.classList.toggle('error',error);} }
+  function driveJsonp(params) {
+    return new Promise((resolve,reject)=>{
+      const callback=`syntaxDriveCallback${Date.now()}${Math.floor(Math.random()*10000)}`;
+      const script=document.createElement('script'); const timeout=setTimeout(()=>finish(new Error('Drive request timed out')),20000);
+      function finish(error,value){clearTimeout(timeout);delete window[callback];script.remove();error?reject(error):resolve(value);}
+      window[callback]=value=>value?.ok?finish(null,value):finish(new Error(value?.error||'Drive request failed'));
+      script.onerror=()=>finish(new Error('Could not reach the Google Drive storage app'));
+      script.src=`${driveApiUrl}?${new URLSearchParams({...params,callback})}`;document.head.append(script);
+    });
+  }
+  function drivePost(payload) {
+    return new Promise((resolve,reject)=>{
+      const frame=document.createElement('iframe'),form=document.createElement('form'),field=document.createElement('input');
+      const target=`syntaxDrivePost${Date.now()}${Math.floor(Math.random()*10000)}`;frame.name=target;frame.hidden=true;frame.src='about:blank';
+      form.method='POST';form.action=driveApiUrl;form.target=target;form.hidden=true;field.name='payload';field.value=JSON.stringify(payload);form.append(field);
+      let done=false;const cleanup=()=>{window.removeEventListener('message',receive);clearTimeout(timeout);form.remove();frame.remove();};
+      const receive=event=>{if(event.source!==frame.contentWindow||event.data?.type!=='syntax-studio-drive')return;done=true;cleanup();event.data.ok?resolve(event.data):reject(new Error(event.data.error||'Drive save failed'));};
+      const timeout=setTimeout(()=>{if(!done){cleanup();reject(new Error('Drive save timed out'));}},30000);
+      window.addEventListener('message',receive);document.body.append(frame,form);form.submit();
+    });
+  }
+  async function loadDriveState() {
+    if(!driveApiUrl)return;
+    const response=await driveJsonp({action:'state'}),state=response.state||{};
+    if(Array.isArray(state.assignments))localStorage.setItem('syntaxStudio.assignments',JSON.stringify(state.assignments));
+    if(state.examConfig)localStorage.setItem('syntaxStudio.examConfig',JSON.stringify(state.examConfig));
+    showCloudStatus('Google Drive connected');return state;
+  }
+  async function syncDriveState() {
+    const state={assignments:store.get('assignments',[]),examConfig:store.get('examConfig',null)},files=[];
+    for(const item of state.assignments||[]){
+      const ref=item.questionPdf;if(!ref?.id)continue;
+      const file=await attachmentDB.get(ref.id);if(!file)continue;
+      const bytes=new Uint8Array(await file.arrayBuffer());let binary='';for(let offset=0;offset<bytes.length;offset+=0x8000)binary+=String.fromCharCode(...bytes.subarray(offset,offset+0x8000));
+      files.push({id:ref.id,name:ref.name||file.name,mimeType:file.type||'application/pdf',data:btoa(binary)});
+    }
+    showCloudStatus('Saving to Google Drive...');
+    await drivePost({action:'save',password:getDrivePassword(),state,files});
+    showCloudStatus('Saved to Google Drive');
+  }
   async function cloudFetch(path, options={}) {
     const response=await fetch(`${cloudApiBase}${path}`,{...options,headers:{...(options.headers||{}),...(getAdminToken()?{Authorization:`Bearer ${getAdminToken()}`}:{})}});
     const body=await response.json().catch(()=>({}));
@@ -18,6 +63,7 @@
     return response;
   }
   async function loadCloudState(admin=false) {
+    if(driveApiUrl)return loadDriveState();
     if(!cloudApiBase)return;
     try{
       const state=await cloudFetch(admin?'/api/admin/state':'/api/state');
@@ -32,6 +78,7 @@
     }
   }
   async function syncRemoteKey(key,value) {
+    if(driveApiUrl){if(getDrivePassword()&&['assignments','examConfig'].includes(key))return syncDriveState();return;}
     if(!cloudApiBase||!getAdminToken()||!['assignments','examConfig'].includes(key))return;
     let path='/api/admin/assignments',payload={assignments:value};
     if(key==='examConfig'){path='/api/admin/exam-config';payload={examConfig:value};}
@@ -50,7 +97,8 @@
     set(key, value) {
       try { localStorage.setItem(`syntaxStudio.${key}`, JSON.stringify(value)); }
       catch { showCloudStatus('This browser could not save a local copy',true); }
-      if(cloudApiBase&&getAdminToken()&&['assignments','examConfig'].includes(key))syncRemoteKey(key,value).catch(error=>showCloudStatus(`GitHub save failed: ${error.message}`,true));
+      if(driveApiUrl&&getDrivePassword()&&['assignments','examConfig'].includes(key))syncRemoteKey(key,value).catch(error=>showCloudStatus(`Drive save failed: ${error.message}`,true));
+      else if(cloudApiBase&&getAdminToken()&&['assignments','examConfig'].includes(key))syncRemoteKey(key,value).catch(error=>showCloudStatus(`GitHub save failed: ${error.message}`,true));
     }
   };
   const attachmentDB = (() => {
@@ -70,7 +118,7 @@
       async delete(id) { const db = await this.open(); return new Promise((resolve,reject)=>{const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);}); }
     };
   })();
-  if(cloudApiBase){
+  if(driveApiUrl||cloudApiBase){
     try{await loadCloudState(Boolean(getAdminToken()));}
     catch{if(!getAdminToken())try{await loadCloudState(false);}catch{}}
   }
@@ -142,6 +190,19 @@
   function formatDate(value) { if(!value)return 'No due date'; const date=new Date(value); return Number.isNaN(date.getTime())?'No due date':`${date.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Asia/Kolkata'})} IST`; }
   function setTeacher(value) { teacherMode=value; document.body.classList.toggle('teacher-mode',value); $('#teacherToggle').setAttribute('aria-pressed',String(value)); $('#teacherToggle').setAttribute('aria-label',value?'Close admin portal':'Open admin portal'); renderAssignments(); renderExam(); }
   async function adminLogin() {
+    if(driveApiUrl){
+      let password=getDrivePassword();
+      if(!password){password=prompt('Google Drive admin password:');if(password===null)return;}
+      try{
+        const oldAssignments=store.get('assignments',[]).length?store.get('assignments',[]):preSyncAssignments;
+        await drivePost({action:'login',password});
+        sessionStorage.setItem(drivePasswordKey,password);
+        const state=await loadDriveState();
+        if(!(state.assignments||[]).length&&oldAssignments.length){localStorage.setItem('syntaxStudio.assignments',JSON.stringify(oldAssignments));await syncDriveState();}
+        setTeacher(true);toast('Admin portal opened. Data is stored in Google Drive.');
+      }catch(error){sessionStorage.removeItem(drivePasswordKey);toast(`Admin sign-in failed: ${error.message}`);}
+      return;
+    }
     if(cloudApiBase){
       if(getAdminToken()){
         try{await loadCloudState(true);setTeacher(true);toast('Admin portal opened.');return;}
@@ -173,13 +234,13 @@
     password=prompt('Admin password:');
     if(password===localStorage.getItem(key)) setTeacher(true); else if(password!==null) toast('Incorrect password.');
   }
-  function navigate(view) { const names={home:'Overview',learn:'Learning path',scenario:'LR(0) scenario',assignments:'Assignments',exam:'Exam room'}; $$('.view').forEach(el=>el.classList.toggle('active',el.id===`${view}View`)); $$('.nav-item[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view)); $('#crumbTitle').textContent=names[view]||'Overview'; window.scrollTo({top:0,behavior:'smooth'}); if(view==='exam')renderExam(); if(view==='assignments')renderAssignments(); }
+  function navigate(view) { const names={home:'Overview',learn:'Learning path',scenario:'LR(0) scenario',assignments:'Assignments',exam:'Exam room'}; $$('.view').forEach(el=>el.classList.toggle('active',el.id===`${view}View`)); $$('.nav-item[data-view]').forEach(el=>el.classList.toggle('active',el.dataset.view===view)); $('#crumbTitle').textContent=names[view]||'Overview'; window.scrollTo({top:0,behavior:'smooth'}); if(view==='exam')renderExam(); if(view==='assignments'){if(driveApiUrl)loadDriveState().then(renderAssignments).catch(()=>renderAssignments());else renderAssignments();} }
   function topicCard(topic,compact=false) { const done=!!progress[topic.id]; return `<article class="topic-card" data-topic="${topic.id}"><div class="topic-top"><span class="topic-icon">${topic.icon}</span><span class="topic-index">${done?'✓ COMPLETE':topic.time.toUpperCase()}</span></div><h3>${topic.title}</h3><p>${topic.intro}</p><div class="topic-bottom"><span>${topic.level}</span><span>${done?'Review topic':'Explore topic'} →</span></div>${!compact?`<div class="tiny-progress"><span style="width:${done?100:0}%"></span></div>`:''}</article>`; }
   function renderTopics() { $('#homeTopics').innerHTML=topics.map(t=>topicCard(t)).join(''); $('#allTopics').innerHTML=topics.map((t,i)=>`<article class="topic-row"><span class="topic-icon">${t.icon}</span><div><h3>Gate ${String(i+1).padStart(2,'0')} · ${t.title}</h3><p>${t.description}</p><div class="topic-meta"><span>${t.time}</span><span>${t.level}</span><span>${progress[t.id]?'Completed':'Interactive lesson'}</span></div></div><button class="primary-button" data-topic="${t.id}">${progress[t.id]?'Review':'Start'} <span>→</span></button></article>`).join(''); $('#progressTotal').textContent=`${Object.values(progress).filter(Boolean).length} / ${topics.length} complete`; }
   function showTopic(id) { const topic=topics.find(t=>t.id===id); if(!topic)return; currentTopic=id; const body=topic.sections.map((section,i)=>`<section class="lesson-section"><span class="lesson-step">${String(i+1).padStart(2,'0')}</span><div><h3>${section[0]}</h3><p>${section[1]}</p></div></section>`).join(''); openModal(`<p class="eyebrow">GATE ${String(topics.indexOf(topic)+1).padStart(2,'0')} · ${esc(topic.level.toUpperCase())}</p><h2 id="modalTitle">${esc(topic.title)}</h2><p class="modal-intro">${esc(topic.description)}</p><div class="lesson-body">${body}<div class="practice-box"><p class="eyebrow">QUICK CHECK</p><b>${esc(topic.practice.q)}</b><div class="practice-options">${topic.practice.opts.map((o,i)=>`<button class="option" data-practice="${i}">${esc(o)}</button>`).join('')}</div><p class="practice-feedback" id="practiceFeedback"></p></div></div><div class="modal-actions"><button class="secondary-button" id="closeLesson">Close</button><button class="primary-button" id="completeLesson">${progress[id]?'Completed ✓':'Mark gate complete'} <span>→</span></button></div>`); $$('#modalContent [data-practice]').forEach(btn=>btn.addEventListener('click',()=>{const right=Number(btn.dataset.practice)===topic.practice.answer; $$('#modalContent [data-practice]').forEach(b=>b.classList.remove('selected')); btn.classList.add('selected'); const feedback=$('#practiceFeedback'); feedback.textContent=right?topic.practice.explain:'Not quite. Revisit the section above and try again.'; feedback.className=`practice-feedback ${right?'correct':'incorrect'}`})); $('#completeLesson').addEventListener('click',()=>{progress[id]=true;store.set('progress',progress);renderTopics();closeModal();toast('Gate complete — your progress is saved.')}); $('#closeLesson').addEventListener('click',closeModal); }
   function renderAssignments() { assignments=store.get('assignments',defaultAssignments); const now=Date.now(); const active=assignments.filter(a=>!a.locked&&new Date(a.due).getTime()>now); $('#openCount').textContent=active.filter(a=>!submissions[a.id]).length; $('#submittedCount').textContent=Object.keys(submissions).length; $('#upcomingCount').textContent=assignments.filter(a=>!a.locked&&new Date(a.due).getTime()>now&&new Date(a.due).getTime()-now<7*86400000).length; const renderOne=a=>{const submitted=!!submissions[a.id], expired=Date.now()>new Date(a.due).getTime(), locked=a.locked||expired; return `<article class="assignment-card"><span class="assignment-symbol">▧</span><div class="assignment-card-info"><h3>${esc(a.title)}</h3><p>${esc(a.description)}</p>${a.materials?.length?`<div class="assignment-materials">${a.materials.map(([name,url])=>`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Open ${esc(name)} ↗</a>`).join('')}</div>`:''}${a.questionPdf?`<div class="assignment-materials"><button class="small-button" data-question-pdf="${esc(a.questionPdf.id)}" data-file-name="${esc(a.questionPdf.name)}">View question PDF</button></div>`:''}<div class="assignment-due">Due ${formatDate(a.due)} ${a.locked?' · Locked':expired?' · Closed':''}${submitted?` · Submitted: ${esc(submissions[a.id].name)}`:''}</div></div>${submitted?`<span class="submitted-badge">Submitted ✓</span>${teacherMode?`<button class="small-button" data-review="${a.id}">Review</button>`:''}`:locked?'<span class="locked-note">Submission closed</span>':`<button class="primary-button" data-submit="${a.id}">Upload work <span>↑</span></button>`}${teacherMode?`<div class="teacher-actions"><button class="small-button" data-lock="${a.id}">${a.locked?'Unlock':'Lock'}</button><button class="small-button danger" data-delete="${a.id}">Delete</button></div>`:''}</article>`}; $('#assignmentList').innerHTML=assignments.length?assignments.map(renderOne).join(''):'<div class="empty-state"><b>No assignments yet</b>Your teacher has not added any tasks.</div>'; $('#homeAssignments').innerHTML=assignments.slice(0,2).map(a=>`<div class="mini-assignment"><span class="assignment-symbol">▧</span><span><b>${esc(a.title)}</b><small>Due ${formatDate(a.due)}</small></span><span class="status-chip">${submissions[a.id]?'DONE':a.locked?'LOCKED':Date.now()>new Date(a.due).getTime()?'CLOSED':'OPEN'}</span></div>`).join('')||'<p class="exam-home-copy">No assignments yet.</p>'; $$('#assignmentList [data-submit]').forEach(btn=>btn.addEventListener('click',()=>submissionModal(btn.dataset.submit))); $$('#assignmentList [data-question-pdf]').forEach(btn=>btn.addEventListener('click',()=>viewPdf(btn.dataset.questionPdf,btn.dataset.fileName))); $$('#assignmentList [data-review]').forEach(btn=>btn.addEventListener('click',()=>reviewSubmission(btn.dataset.review))); $$('#assignmentList [data-lock]').forEach(btn=>btn.addEventListener('click',()=>{const a=assignments.find(x=>x.id===btn.dataset.lock);a.locked=!a.locked;store.set('assignments',assignments);renderAssignments();toast(a.locked?'Assignment locked.':'Assignment unlocked.')})); $$('#assignmentList [data-delete]').forEach(btn=>btn.addEventListener('click',()=>{assignments=assignments.filter(a=>a.id!==btn.dataset.delete);store.set('assignments',assignments);renderAssignments();toast('Assignment removed.')})); }
   async function reviewSubmission(id) { const sub=submissions[id];if(!sub)return;let preview='';if(sub.attachmentId){const file=await attachmentDB.get(sub.attachmentId);if(file){const url=URL.createObjectURL(file);if(file.type==='application/pdf'||sub.name.toLowerCase().endsWith('.pdf'))preview=`<iframe class="pdf-preview" src="${url}" title="Submitted answer PDF"></iframe>`;else if(file.type.startsWith('image/'))preview=`<img class="answer-image-preview" src="${url}" alt="Submitted answer attachment">`;preview+=`<div class="modal-actions"><a class="primary-button download-link" href="${url}" download="${esc(sub.name)}">Download answer attachment &darr;</a></div>`;}}else if(sub.file){preview=`<iframe class="pdf-preview" src="${sub.file}" title="Submitted answer PDF"></iframe><div class="modal-actions"><a class="primary-button download-link" href="${sub.file}" download="${esc(sub.name)}">Download answer PDF &darr;</a></div>`;}openModal(`<p class="eyebrow">ADMIN REVIEW</p><h2 id="modalTitle">${esc(sub.name)}</h2><p class="modal-intro">Submitted ${new Date(sub.submittedAt).toLocaleString()}${sub.fileExpired?' &middot; PDF removed after 10 days':''}</p><div class="review-answer">${esc(sub.text||'No written response.')}</div>${preview}<div class="modal-actions"><button class="secondary-button" id="closeReview">Close</button></div>`);$('#closeReview').addEventListener('click',closeModal); }
-  async function viewPdf(id,name){try{let file=await attachmentDB.get(id);if(!file&&cloudApiBase)file=await (await cloudFileFetch(`/api/files/${encodeURIComponent(id)}`)).blob();if(!file)return toast('This PDF has expired or is unavailable.');const url=URL.createObjectURL(file);openModal(`<p class="eyebrow">ASSIGNMENT QUESTION</p><h2 id="modalTitle">${esc(name)}</h2><iframe class="pdf-preview" src="${url}" title="${esc(name)}"></iframe><div class="modal-actions"><a class="primary-button download-link" href="${url}" download="${esc(name)}">Download PDF &darr;</a><button class="secondary-button" id="closeQuestionPdf">Close</button></div>`);$('#closeQuestionPdf').addEventListener('click',closeModal);}catch{toast('Could not open the question PDF.');}}
+  async function viewPdf(id,name){try{let file=await attachmentDB.get(id);if(!file&&driveApiUrl){const result=await driveJsonp({action:'file',id}),raw=atob(result.file.data),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);file=new Blob([bytes],{type:result.file.mimeType||'application/pdf'});}if(!file&&cloudApiBase)file=await (await cloudFileFetch(`/api/files/${encodeURIComponent(id)}`)).blob();if(!file)return toast('This PDF has expired or is unavailable.');const url=URL.createObjectURL(file);openModal(`<p class="eyebrow">ASSIGNMENT QUESTION</p><h2 id="modalTitle">${esc(name)}</h2><iframe class="pdf-preview" src="${url}" title="${esc(name)}"></iframe><div class="modal-actions"><a class="primary-button download-link" href="${url}" download="${esc(name)}">Download PDF &darr;</a><button class="secondary-button" id="closeQuestionPdf">Close</button></div>`);$('#closeQuestionPdf').addEventListener('click',closeModal);}catch{toast('Could not open the question PDF.');}}
   function submissionModal(id) { const item=assignments.find(a=>a.id===id); if(!item||item.locked||Date.now()>new Date(item.due).getTime())return toast('This submission is closed.'); openModal(`<p class="eyebrow">ASSIGNMENT SUBMISSION</p><h2 id="modalTitle">${esc(item.title)}</h2><p class="modal-intro">${esc(item.description)}<br>Due ${formatDate(item.due)}</p><form id="submissionForm"><div class="form-field"><label for="answerText">Your answer</label><textarea id="answerText" placeholder="Write your solution here..." required></textarea></div><div class="form-field"><label for="uploadFile">Attach a file (optional, max 5 MB)</label><input type="file" id="uploadFile" accept=".pdf,.png,.jpg,.jpeg,.txt,.doc,.docx"></div><p class="locked-note">Work is saved in this browser. PDFs are deleted after 10 days. Other uploads may remain.</p><div class="modal-actions"><button type="button" class="secondary-button" id="cancelSubmit">Cancel</button><button class="primary-button">Submit assignment <span>&rarr;</span></button></div></form>`); $('#cancelSubmit').addEventListener('click',closeModal); $('#submissionForm').addEventListener('submit',async e=>{e.preventDefault();const file=$('#uploadFile').files[0];if(file&&file.size>5*1024*1024)return toast('Please choose a file no larger than 5 MB.');try{const attachmentId=file?`submission-${id}-${Date.now()}`:'';if(file){await attachmentDB.put(attachmentId,file);trackPdf(attachmentId,file);}submissions[id]={text:$('#answerText').value,name:file?.name||'Written response',attachmentId,submittedAt:Date.now()};store.set('submissions',submissions);closeModal();renderAssignments();toast('Assignment submitted.');}catch{toast('Could not save the attachment in this browser.');}}); }
   function openModal(html) { $('#modalContent').innerHTML=html; $('#modalBackdrop').classList.add('open'); $('#modalBackdrop').setAttribute('aria-hidden','false'); const first=$('#modalContent input,#modalContent textarea,#modalContent button'); if(first)first.focus(); }
   function closeModal() { $('#modalBackdrop').classList.remove('open');$('#modalBackdrop').setAttribute('aria-hidden','true'); }
@@ -241,5 +302,5 @@
     if(animationPlaying&&slideStep<slide.steps.length)animationTimer=setTimeout(()=>{slideStep=Math.min(slide.steps.length,slideStep+1);if(slideStep>=slide.steps.length)animationPlaying=false;renderSlide()},1250);
   }  document.addEventListener('click',e=>{const view=e.target.closest('[data-view]');if(view){e.preventDefault();navigate(view.dataset.view);return}const topic=e.target.closest('[data-topic]');if(topic){showTopic(topic.dataset.topic);return}if(e.target.closest('[data-action="calculator"]'))calculator();});
   $$('.nav-item[data-view]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.view))); $('#teacherToggle').addEventListener('click',()=>{if(teacherMode)setTeacher(false);else adminLogin()}); $('#modalClose').addEventListener('click',closeModal); $('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal()}); document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()}); $('#addAssignment').addEventListener('click',addAssignmentModal);
-  cleanupExpiredPdfs(); setInterval(cleanupExpiredPdfs,60*60*1000); updateClock(); setInterval(updateClock,60000); if(!cloudApiBase)showCloudStatus('Local-only storage'); setTeacher(teacherMode); renderTopics(); renderAssignments(); renderExam(); renderExamHome(); renderSlideGrid();
+  cleanupExpiredPdfs(); setInterval(cleanupExpiredPdfs,60*60*1000); updateClock(); setInterval(updateClock,60000); if(!driveApiUrl&&!cloudApiBase)showCloudStatus('Local-only storage'); setTeacher(teacherMode); renderTopics(); renderAssignments(); renderExam(); renderExamHome(); renderSlideGrid();
 })();
