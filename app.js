@@ -211,6 +211,25 @@
   function trackPdf(id,file){if(file.type==='application/pdf'||file.name.toLowerCase().endsWith('.pdf')){const records=store.get('attachmentMeta',[]);records.push({id,expiresAt:Date.now()+10*24*60*60*1000});store.set('attachmentMeta',records);}}
 
   function toast(message) { const box=$('#toast'); box.textContent=message; box.classList.add('show'); clearTimeout(toastTimeout); toastTimeout=setTimeout(()=>box.classList.remove('show'),2600); }
+  let modalReturnFocus=null;
+  function openModal(html) {
+    const backdrop=$('#modalBackdrop'),content=$('#modalContent');
+    if(!backdrop||!content){console.error('Cannot open dialog: modal elements are missing.');return;}
+    modalReturnFocus=document.activeElement;
+    content.innerHTML=html;
+    backdrop.classList.add('open');
+    backdrop.setAttribute('aria-hidden','false');
+    const first=content.querySelector('input,textarea,select,button');
+    if(first)first.focus();
+  }
+  function closeModal() {
+    const backdrop=$('#modalBackdrop');
+    if(!backdrop)return;
+    backdrop.classList.remove('open');
+    backdrop.setAttribute('aria-hidden','true');
+    if(modalReturnFocus?.isConnected)modalReturnFocus.focus();
+    modalReturnFocus=null;
+  }
   function esc(value='') { return String(value).replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
   function formatDate(value) { if(!value)return 'No due date'; const date=new Date(value); return Number.isNaN(date.getTime())?'No due date':`${date.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Asia/Kolkata'})} IST`; }
   function renderSafely(name,render){try{render();}catch(error){console.error(`${name} failed to render`,error);showCloudStatus(`${name} could not load. Reload the page.`,true);}}
@@ -320,13 +339,14 @@
       if(!text&&!file)return toast('Write an answer or choose a photo/PDF.');
       if(file&&file.size>5*1024*1024)return toast('Please choose a file no larger than 5 MB.');
       if(file&&!['application/pdf','image/png','image/jpeg'].includes(inferMimeType(file)))return toast('Answer files must be a PDF, PNG, or JPG image.');
+      const submitButton=e.submitter;if(submitButton?.disabled)return;if(submitButton){submitButton.disabled=true;submitButton.textContent='Uploading…';}
       try{
         if(!pendingSubmission){const attachmentId=file?`submission-${id}-${Date.now()}`:'';if(file){await attachmentDB.put(attachmentId,file);trackPdf(attachmentId,file);}pendingFile=file||null;pendingSubmission={text,name:file?.name||'Written response',attachmentId,submittedAt:Date.now()};}
-        else{pendingSubmission.text=text;if(file)pendingFile=file;}
+        else{pendingSubmission.text=text;if(file){const attachmentId=pendingSubmission.attachmentId||`submission-${id}-${Date.now()}`;await attachmentDB.put(attachmentId,file);trackPdf(attachmentId,file);pendingSubmission.attachmentId=attachmentId;pendingSubmission.name=file.name;pendingFile=file;}}
         if(driveApiUrl)await drivePost({action:'submit',assignmentId:id,text:pendingSubmission.text,name:pendingSubmission.name,mimeType:pendingFile?inferMimeType(pendingFile):'',data:pendingFile?await blobToBase64(pendingFile):''});
         submissions[id]=pendingSubmission;store.set('submissions',submissions);
         closeModal();renderAssignments();toast(driveApiUrl?'Assignment submitted and uploaded.':'Assignment saved in this browser only.');
-      }catch(error){showCloudStatus(`Submission upload failed: ${error.message}`,true);toast('Upload failed. Your answer is still here; retry after reconnecting.');}
+      }catch(error){if(submitButton){submitButton.disabled=false;submitButton.textContent='Retry upload';}showCloudStatus(`Submission upload failed: ${error.message}`,true);toast('Upload failed. Your answer is still here; retry after reconnecting.');}
     });
   }
   function addAssignmentModal() {
@@ -339,6 +359,7 @@
       if(!description&&!file?.size)return toast('Type a question or attach an image/PDF.');
       if(file?.size>5*1024*1024)return toast('Question attachment must be no larger than 5 MB.');
       if(file?.size&&!['application/pdf','image/png','image/jpeg'].includes(inferMimeType(file)))return toast('Question attachments must be a PDF, PNG, or JPG image.');
+      const submitButton=e.submitter;if(submitButton?.disabled)return;if(submitButton){submitButton.disabled=true;submitButton.textContent='Saving…';}
       try{
         if(!pendingAssignment){const id=`a${Date.now()}`,attachmentId=file?.size?`question-${id}`:'';if(file?.size){await attachmentDB.put(attachmentId,file);trackPdf(attachmentId,file);}pendingAssignment={id,title:String(form.get('title')).trim(),description,due,locked:false,questionPdf:attachmentId?{id:attachmentId,name:file.name,mimeType:inferMimeType(file)||'application/pdf'}:null};assignments.push(pendingAssignment);}
         else{pendingAssignment.title=String(form.get('title')).trim();pendingAssignment.description=description;pendingAssignment.due=due;}
@@ -346,7 +367,7 @@
         if(driveApiUrl){if(!getDrivePassword())throw new Error('Sign in to the Drive admin portal before saving.');await syncDriveState();}
         else if(cloudApiBase){if(!getAdminToken())throw new Error('Sign in to the cloud admin portal before saving.');await syncRemoteKey('assignments',assignments);}
         closeModal();renderAssignments();toast('Assignment created and saved.');
-      }catch(error){renderAssignments();showCloudStatus(`Assignment kept in this browser; shared upload failed: ${error.message}`,true);toast('Assignment saved here; shared upload failed. Retry after reconnecting.');}
+      }catch(error){if(submitButton){submitButton.disabled=false;submitButton.textContent='Retry save';}renderAssignments();showCloudStatus(`Assignment kept in this browser; shared upload failed: ${error.message}`,true);toast('Assignment saved here; shared upload failed. Retry after reconnecting.');}
     });
   }
   function renderExamHome() { const now=Date.now(),opens=examConfig.opensAt?new Date(examConfig.opensAt).getTime():0,closes=examConfig.closesAt?new Date(examConfig.closesAt).getTime():Infinity; const available=!examConfig.locked&&now>=opens&&now<closes; const state=examConfig.locked?'This exam is not open yet.':now<opens?'The exam will open '+formatDate(examConfig.opensAt)+'.':now>=closes?'This exam window has ended.':'Your exam is ready when you are.'; $('#homeExam').innerHTML=`<div class="exam-home-copy"><b>${esc(examConfig.title)}</b><p>${state}</p><button class="text-button" data-view="exam">${available?'Enter exam':'View exam room'} →</button></div>`; }
