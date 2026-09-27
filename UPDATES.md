@@ -12,6 +12,7 @@
 - Added interactive walkthroughs for the supplied lecture questions and grammar exercises.
 - Added a timed exam with saved answers, automatic submission, and an in-exam calculator.
 - Added an admin exam setup form and PDF question-paper import. Selectable-text MCQs can be extracted for review; the admin edits the questions and selects correct answers before adding them to the exam.
+- Added browser OCR fallback for scanned question-paper PDFs, with progress and a review step before importing recognized questions.
 
 ## Assignments and PDFs
 

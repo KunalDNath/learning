@@ -25,9 +25,9 @@ The learning path includes the LR(0) and SLR(1) topics and worked grammar exerci
 - Assignment question PDFs and learner uploads up to 5 MB are stored in the browser's IndexedDB. Uploaded PDFs are purged after 10 days when the app is open or next opened.
 - A configurable, timed exam with automatically saved answers, automatic submission and a built-in calculator.
 - A mobile bottom navigation bar with touch-sized controls and stacked exam layouts.
-- PDF exam import for selectable-text MCQs: extracted questions and options appear in a review form, and the admin sets the correct answer before adding them to the exam.
+- PDF exam import for text and scanned MCQs: scanned pages use browser OCR, then extracted questions and options appear in a review form for correction before adding to the exam.
 
-PDF question extraction uses [Mozilla PDF.js](https://mozilla.github.io/pdf.js/getting_started/) loaded from a CDN. The PDF must contain selectable text; scanned image-only papers require OCR and are not auto-converted.
+PDF question extraction uses [Mozilla PDF.js](https://mozilla.github.io/pdf.js/getting_started/) and [Tesseract.js](https://github.com/naptha/tesseract.js), loaded from CDNs when needed. OCR runs in the browser; it may misread math symbols, question boundaries, or answer choices, so review every extracted question and select its correct answer before importing.
 
 ## Store shared assignments in Google Drive
 
