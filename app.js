@@ -223,7 +223,7 @@
         if(!(state.assignments||[]).length&&oldAssignments.length){localStorage.setItem('syntaxStudio.assignments',JSON.stringify(oldAssignments));await syncDriveState();}
         await loadDriveSubmissions();
         setTeacher(true);toast('Admin portal opened. Data is stored in Google Drive.');
-      }catch(error){sessionStorage.removeItem(drivePasswordKey);toast(`Admin sign-in failed: ${error.message}`);}
+      }catch(error){sessionStorage.removeItem(drivePasswordKey);if(/unknown action/i.test(error.message)){showCloudStatus('Drive backend outdated — redeploy the latest Code.gs.',true);toast('Admin sign-in failed: update the Drive backend.');}else toast(`Admin sign-in failed: ${error.message}`);}
       return;
     }
     if(cloudApiBase){
