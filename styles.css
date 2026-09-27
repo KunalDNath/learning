@@ -53,3 +53,4 @@
 .nav-item>span.mobile-nav-label{width:auto;font-size:inherit;text-align:left;color:inherit}
 
 @media(max-width:760px){.nav-item>span.mobile-nav-label{font-size:8px!important;width:auto;text-align:center;color:inherit}}
+.cloud-status{font-size:9px;color:#728f7d;max-width:210px;text-align:right}.cloud-status.error{color:#a84d54}.today-label{font-variant-numeric:tabular-nums}

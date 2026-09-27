@@ -32,9 +32,9 @@
     </aside>
 
     <main class="main-area">
-      <header class="topbar"><div class="breadcrumb">My learning <span>/</span> <b id="crumbTitle">Overview</b></div><div class="top-actions"><span class="today-label" id="todayLabel"></span><button class="icon-button" title="Notifications" aria-label="Notifications">♧<i></i></button><div class="mini-avatar">S</div></div></header>
+      <header class="topbar"><div class="breadcrumb">My learning <span>/</span> <b id="crumbTitle">Overview</b></div><div class="top-actions"><span class="today-label" id="todayLabel"></span><span class="cloud-status" id="cloudStatus" aria-live="polite"></span><button class="icon-button" title="Notifications" aria-label="Notifications">♧<i></i></button><div class="mini-avatar">S</div></div></header>
       <section class="view active" id="homeView">
-        <div class="welcome-row"><div><p class="eyebrow">SATURDAY, SEPTEMBER 26, 2026 <span class="live-pill"><i></i> YOUR LEARNING SPACE</span></p><h1>Good evening, Soumi <span class="wave">&#10024;</span></h1><p class="subheading">A little progress each day adds up to big results.</p></div><button class="primary-button" data-view="learn">Continue learning <span>&rarr;</span></button></div>
+        <div class="welcome-row"><div><p class="eyebrow"><span id="greetingDate"></span> <span class="live-pill"><i></i> YOUR LEARNING SPACE</span></p><h1><span id="greetingText">Welcome, Soumi</span> <span class="wave">&#10024;</span></h1><p class="subheading">A little progress each day adds up to big results.</p></div><button class="primary-button" data-view="learn">Continue learning <span>&rarr;</span></button></div>
         <section class="hero-card"><div class="hero-copy"><div class="hero-tag"><span>&#10022;</span> YOUR NEXT CHAPTER</div><h2>Make sense of<br>syntax, one step at a time.</h2><p>Build a strong foundation in parsing with bite-sized lessons and hands-on practice.</p><button class="light-button" data-view="learn">Pick up where you left off <span>&rarr;</span></button></div><div class="hero-art" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="syntax-card card-a"><small>GRAMMAR</small><code>E -&gt; E + T</code></div><div class="syntax-card card-b"><small>LOOKAHEAD</small><code>FIRST(alpha)</code></div><div class="syntax-core">{<span>;</span>}</div><div class="spark spark-a">&#10024;</div><div class="spark spark-b">&#10022;</div></div><div class="hero-count"><b>01</b><span>/ 03</span></div></section>
         <div class="section-heading"><div><p class="eyebrow">YOUR JOURNEY</p><h2>Learning path</h2></div><button class="text-button" data-view="learn">View all topics <span>&rarr;</span></button></div>
         <div class="topic-grid" id="homeTopics"></div>
@@ -66,6 +66,7 @@
   <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><button class="modal-close" id="modalClose" aria-label="Close">×</button><div id="modalContent"></div></section></div>
   <div class="toast" id="toast" role="status"></div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" referrerpolicy="no-referrer"></script>
+  <script src="cloud-config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

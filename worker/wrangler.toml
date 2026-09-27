@@ -1,0 +1,17 @@
+name = "learning-soumi-api"
+main = "src/index.js"
+compatibility_date = "2026-09-27"
+
+[vars]
+# Create this as a separate PRIVATE GitHub repository before deploying.
+DATA_REPO = "KunalDNath/learning-private-data"
+DATA_BRANCH = "main"
+# Set this to the website's exact origin (scheme + hostname, no path).
+ALLOWED_ORIGIN = "https://kunaldnath.github.io"
+
+[[r2_buckets]]
+binding = "PDFS"
+bucket_name = "learning-soumi-pdfs"
+
+[triggers]
+crons = ["0 * * * *"]

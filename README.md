@@ -29,4 +29,18 @@ The learning path includes the LR(0) and SLR(1) topics and worked grammar exerci
 
 PDF question extraction uses [Mozilla PDF.js](https://mozilla.github.io/pdf.js/getting_started/) loaded from a CDN. The PDF must contain selectable text; scanned image-only papers require OCR and are not auto-converted.
 
-On first use, select **Admin portal** and create a password for that browser. This is a front-end prototype: the password and course data stay in that browser profile, and the password gate is not secure authentication. GitHub Pages cannot share assignments, uploaded work or exam settings between Soumi's device and the admin's device. The 10-day PDF cleanup is also browser-side, so it cannot run while the browser is closed or remove copies stored on another device. Cross-device accounts, shared submissions and server-enforced retention need a backend service.
+## Shared admin storage setup
+
+The site source is the GitHub repository `KunalDNath/learning` (`https://github.com/KunalDNath/learning.git`). The optional Cloudflare Worker connects the static site to shared storage. Assignment metadata and exam settings are committed to a separate private GitHub repository. This separation keeps admin data and exam answers out of the website's source repository. PDFs are stored in Cloudflare R2, not Git history, and the Worker removes expired objects once an hour after their 10-day retention period.
+
+1. Create a **private** GitHub repository named `learning-private-data` under the configured owner, initialized with a README on the `main` branch. Create a fine-grained GitHub token with **Contents: Read and write** access to that repository.
+2. Install Wrangler and sign in to Cloudflare. From the `worker` directory, create the bucket with `npx wrangler r2 bucket create learning-soumi-pdfs`.
+3. Set the exact public website origin in `worker/wrangler.toml` (`ALLOWED_ORIGIN`; for GitHub Pages the origin is `https://kunaldnath.github.io`). Check the `DATA_REPO` owner/repository values too.
+4. In `worker`, add Worker secrets with `npx wrangler secret put GITHUB_TOKEN`, `npx wrangler secret put ADMIN_PASSWORD`, and `npx wrangler secret put SESSION_SECRET`. Use a long random session secret. Do not put these values in this repository or in chat.
+5. Deploy from `worker` with `npx wrangler deploy`. Copy the resulting `workers.dev` URL into `cloud-config.js` as `window.SYNTAX_STUDIO_API_URL`, commit and publish the site.
+
+The admin password is configured once as a Worker secret; it is not saved in the browser or GitHub. A signed 30-day admin session is saved in the browser, so reopening the portal in that browser does not prompt again while the session is valid. Admins on another device sign in with the same Worker password. Assignments and exam settings then load from the shared private repo. The GitHub token stays server-side in the Worker.
+
+Learner uploads/submissions and learner progress are still browser-local in this version. Only assignments, question PDFs and exam settings sync across devices. Exam questions and answers are served to this client-side app for scoring, so the answer key is not suitable for a high-stakes or proctored exam.
+
+Without the Worker URL configured, the site continues to use browser-only storage. PDFs in that local mode are purged when the app is open or next opened. In cloud mode, the Worker Cron Trigger handles PDF deletion independently of browser use.
