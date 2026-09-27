@@ -192,6 +192,7 @@
   let currentTopic = null;
   let importedQuestions = [];
   let toastTimeout;
+  renderSafely('Practice questions',renderSlideGrid);
 
   async function cleanupExpiredPdfs() {
     const files=store.get('attachmentMeta',[]),now=Date.now(),expired=files.filter(file=>file.expiresAt<=now);
@@ -485,7 +486,6 @@
   document.addEventListener('click',e=>{const view=e.target.closest('[data-view]');if(view){e.preventDefault();navigate(view.dataset.view);return}const topic=e.target.closest('[data-topic]');if(topic){showTopic(topic.dataset.topic);return}if(e.target.closest('[data-action="calculator"]'))calculator();});
   $$('.nav-item[data-view]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.view))); $('#teacherToggle').addEventListener('click',()=>{if(teacherMode)setTeacher(false);else adminLogin()}); $('#modalClose').addEventListener('click',closeModal); $('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal()}); document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()}); $('#addAssignment').addEventListener('click',addAssignmentModal);
   cleanupExpiredPdfs(); setInterval(cleanupExpiredPdfs,60*60*1000); updateClock(); setInterval(updateClock,60000); if(!driveApiUrl&&!cloudApiBase)showCloudStatus('Local-only storage');
-  renderSafely('Practice questions',renderSlideGrid);
   renderSafely('Learning content',renderTopics);
   setTeacher(teacherMode);
   renderSafely('Assignments',renderAssignments);
