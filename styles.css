@@ -54,3 +54,42 @@
 
 @media(max-width:760px){.nav-item>span.mobile-nav-label{font-size:8px!important;width:auto;text-align:center;color:inherit}}
 .cloud-status{font-size:9px;color:#728f7d;max-width:210px;text-align:right}.cloud-status.error{color:#a84d54}.today-label{font-variant-numeric:tabular-nums}
+
+/* Clear, step-by-step exam administration */
+.exam-admin-panel{padding:24px;background:#fff;border-color:#eee3e0}
+.exam-admin-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:20px}
+.exam-admin-heading .eyebrow{margin-bottom:5px}
+.exam-admin-heading h2{font-size:20px;margin:0 0 5px}
+.exam-admin-heading p:last-child{font-size:11px;color:#908588;margin:0}
+.question-count{flex:none;padding:8px 11px;background:#f8eeee;border-radius:99px;color:var(--wine);font-size:10px;font-weight:700}
+.exam-admin-section{padding:20px 0;border-top:1px solid var(--line)}
+.exam-step{display:flex;align-items:flex-start;gap:11px;margin-bottom:16px}
+.exam-step>span{width:25px;height:25px;flex:none;display:grid;place-items:center;border-radius:50%;background:#f8eeee;color:var(--wine);font-size:11px;font-weight:700}
+.exam-step h3{font-size:13px;margin:1px 0 4px}
+.exam-step p{color:#93888a;font-size:10px;margin:0;line-height:1.5}
+.exam-config-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.exam-admin-panel .form-field{display:grid;gap:6px;min-width:0;margin:0}
+.exam-admin-panel .form-field label{font-size:10px;font-weight:700;color:#716467}
+.exam-admin-panel .form-field input,.exam-admin-panel .form-field select,.exam-admin-panel .form-field textarea{width:100%;min-width:0;padding:10px 11px;border:1px solid #e9e0de;border-radius:7px;background:#fff;color:var(--ink);font-size:11px}
+.exam-admin-panel .exam-title-field{grid-column:1/-1}
+.input-with-suffix{display:flex;align-items:center;gap:8px}
+.input-with-suffix span{flex:none;color:#928789;font-size:10px}
+.exam-config-actions{grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:3px}
+.exam-config-actions>span{color:#8d8183;font-size:9px}
+.exam-config-actions .primary-button,.exam-config-actions .secondary-button{padding:10px 13px}
+.question-admin-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:12px}
+.question-admin-form .question-prompt-field{grid-column:1/-1}
+.question-admin-form textarea{min-height:76px;resize:vertical}
+.question-admin-form button{justify-self:start;margin-bottom:1px}
+.exam-import-details{margin-top:17px;padding:13px 14px;border:1px solid var(--line);border-radius:9px;background:#fdfbfa}
+.exam-import-details summary{color:var(--wine);font-size:10px;font-weight:700;cursor:pointer}
+.exam-import-details>p{margin:10px 0 12px;color:#817679;font-size:10px;line-height:1.6}
+.exam-import-details .question-admin-form{grid-template-columns:minmax(0,1fr) auto;align-items:end}
+.question-bank-empty{margin:0;padding:14px;border:1px dashed #e6d9d8;border-radius:8px;color:#928689;font-size:10px}
+.question-admin-list{display:grid;gap:7px}
+.question-admin-list>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.question-admin-list>div>span{min-width:0;color:#55494c;font-size:10px;line-height:1.5}
+.question-admin-list>div>span b{color:#ac777c;margin-right:4px}
+.import-message{display:grid;gap:5px;margin-top:12px;padding:12px 14px;border:1px solid #ead8ca;border-radius:8px;background:#fff8f1;color:#725846;font-size:10px;line-height:1.5}
+.import-message b{color:#594033}
+@media(max-width:760px){.exam-admin-panel{padding:17px 14px}.exam-config-grid{grid-template-columns:1fr}.exam-admin-panel .exam-title-field,.exam-config-actions{grid-column:1}.question-admin-form{grid-template-columns:1fr}.question-admin-form .question-prompt-field{grid-column:1}.exam-import-details .question-admin-form{grid-template-columns:1fr}.exam-admin-heading{align-items:flex-start}.question-admin-list>div{align-items:flex-start}.exam-config-actions{align-items:flex-start}.exam-config-actions>span{flex-basis:100%}}
