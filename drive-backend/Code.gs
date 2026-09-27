@@ -1,11 +1,12 @@
 /** Syntax Studio shared storage. Deploy as a web app that executes as you. */
+const API_VERSION = 2;
 function doGet(e) {
   const action = (e.parameter.action || 'state').toLowerCase();
   let result;
   try {
     if (action === 'state') {
       const state = readState_();
-      result = { ok: true, state: { assignments: state.assignments || [], examConfig: state.examConfig || null } };
+      result = { ok: true, apiVersion: API_VERSION, state: { assignments: state.assignments || [], examConfig: state.examConfig || null } };
     }
     else if (action === 'file') result = { ok: true, file: readFile_(e.parameter.id) };
     else if (action === 'receipt') {

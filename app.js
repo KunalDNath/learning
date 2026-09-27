@@ -3,6 +3,7 @@
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const cloudApiBase = String(window.SYNTAX_STUDIO_API_URL || '').replace(/\/$/, '');
   const driveApiUrl = String(window.SYNTAX_STUDIO_DRIVE_URL || '').trim();
+  const driveApiVersion = 2;
   const drivePasswordKey = 'syntaxStudio.driveAdminPassword';
   const getDrivePassword = () => { try { return sessionStorage.getItem(drivePasswordKey) || ''; } catch { return ''; } };
   function inferMimeType(file) { return file?.type||(/\.pdf$/i.test(file?.name||'')?'application/pdf':/\.png$/i.test(file?.name||'')?'image/png':/\.(jpe?g)$/i.test(file?.name||'')?'image/jpeg':''); }
@@ -42,7 +43,8 @@
     const response=await driveJsonp({action:'state'}),state=response.state||{};
     if(Array.isArray(state.assignments))localStorage.setItem('syntaxStudio.assignments',JSON.stringify(state.assignments));
     if(state.examConfig)localStorage.setItem('syntaxStudio.examConfig',JSON.stringify(state.examConfig));
-    showCloudStatus('Google Drive connected');return state;
+    if(response.apiVersion!==driveApiVersion)showCloudStatus('Drive backend is outdated — redeploy Code.gs v2.',true);
+    else showCloudStatus('Google Drive connected');return state;
   }
   async function syncDriveState() {
     const state={assignments:store.get('assignments',[]),examConfig:store.get('examConfig',null)},files=[];
@@ -223,7 +225,7 @@
         if(!(state.assignments||[]).length&&oldAssignments.length){localStorage.setItem('syntaxStudio.assignments',JSON.stringify(oldAssignments));await syncDriveState();}
         await loadDriveSubmissions();
         setTeacher(true);toast('Admin portal opened. Data is stored in Google Drive.');
-      }catch(error){sessionStorage.removeItem(drivePasswordKey);if(/unknown action/i.test(error.message)){showCloudStatus('Drive backend outdated — redeploy the latest Code.gs.',true);toast('Admin sign-in failed: update the Drive backend.');}else toast(`Admin sign-in failed: ${error.message}`);}
+      }catch(error){sessionStorage.removeItem(drivePasswordKey);if(/unknown action/i.test(error.message)){showCloudStatus('Drive API v2 is required. Check the deployed /exec URL and publish the latest Code.gs.',true);toast('Admin sign-in failed: Drive backend version mismatch.');}else toast(`Admin sign-in failed: ${error.message}`);}
       return;
     }
     if(cloudApiBase){
