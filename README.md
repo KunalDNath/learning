@@ -21,7 +21,12 @@ The learning path includes the LR(0) and SLR(1) topics and worked grammar exerci
 - An image-derived walkthrough for 18 lecture questions. It builds LR(0) automata with labeled GOTO edges as the learner advances, or builds concept maps for non-grammar slides. The source screenshots are not shown in the interface.
 - The Assignments page includes the supplied class notes as openable and downloadable PDFs.
 - Topic lessons with a quick check and saved completion state.
-- Teacher mode to create, lock and unlock assignments, set deadlines, and review submitted answers and attachments.
-- A configurable exam window with a countdown, automatic submission, saved selections and a built-in calculator.
+- A password-gated admin portal to upload assignment question PDFs, create/lock/unlock tasks, set deadlines, review written answers and preview submitted PDFs/images, and manage exam questions.
+- Assignment question PDFs and learner uploads up to 5 MB are stored in the browser's IndexedDB. Uploaded PDFs are purged after 10 days when the app is open or next opened.
+- A configurable, timed exam with automatically saved answers, automatic submission and a built-in calculator.
+- A mobile bottom navigation bar with touch-sized controls and stacked exam layouts.
+- PDF exam import for selectable-text MCQs: extracted questions and options appear in a review form, and the admin sets the correct answer before adding them to the exam.
 
-This is a front-end prototype: learner and teacher data live in one browser profile. Cross-device accounts, shared submissions, and secure server-side exam enforcement require a backend service.
+PDF question extraction uses [Mozilla PDF.js](https://mozilla.github.io/pdf.js/getting_started/) loaded from a CDN. The PDF must contain selectable text; scanned image-only papers require OCR and are not auto-converted.
+
+On first use, select **Admin portal** and create a password for that browser. This is a front-end prototype: the password and course data stay in that browser profile, and the password gate is not secure authentication. GitHub Pages cannot share assignments, uploaded work or exam settings between Soumi's device and the admin's device. The 10-day PDF cleanup is also browser-side, so it cannot run while the browser is closed or remove copies stored on another device. Cross-device accounts, shared submissions and server-enforced retention need a backend service.

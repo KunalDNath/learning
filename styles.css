@@ -6,3 +6,50 @@
 .notes-library{margin-top:18px;padding:20px}.notes-count{padding:7px 10px;border-radius:99px;background:#f8eeee;color:#914650;font-size:9px;font-weight:700}.notes-intro{margin:8px 0 14px;color:#8e8385;font-size:10px}.notes-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.note-card{display:flex;align-items:center;flex-wrap:wrap;gap:9px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff}.note-icon{display:grid;width:34px;height:38px;place-items:center;border-radius:7px;background:#f8eeee;color:var(--wine);font:800 8px Manrope,sans-serif}.note-info{display:grid;min-width:0;flex:1;gap:4px}.note-info b{font-size:10px}.note-info small{color:#998e90;font-size:9px}.note-download{width:100%;padding-top:8px;border-top:1px solid #f1eae8;color:var(--wine);font-size:9px;font-weight:700;text-decoration:none}.note-card .small-button{text-decoration:none}@media(max-width:760px){.notes-grid{grid-template-columns:1fr}.notes-library{padding:15px}}
 .nav-tag{font-size:8px!important;color:#a96068!important;background:#f8ebea;padding:3px 5px;border-radius:6px}
 .assignment-materials{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.assignment-materials a{padding:5px 8px;border-radius:6px;background:#fbf2ef;color:var(--wine);font-size:9px;font-weight:700;text-decoration:none}.assignment-materials a:hover{background:#f4e4e0}
+
+/* Compact bottom navigation and touch-friendly layouts on phones. */
+@media(max-width:760px){
+  body{padding-bottom:74px}
+  .sidebar{width:auto;height:68px;inset:auto 0 0 0;padding:4px 7px;flex-direction:row;align-items:center;gap:4px;border-right:0;border-top:1px solid #eee7e5;box-shadow:0 -5px 20px #4d25300d}
+  .brand,.course-switch,.nav-label,.sidebar-spacer,.profile{display:none}
+  .main-nav{display:flex;flex:1;min-width:0;justify-content:space-around;gap:2px}
+  .nav-item{display:flex;flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2px;padding:5px 2px;font-size:8px!important;line-height:1.15;text-align:center;white-space:nowrap}
+  .nav-item>span{width:auto;font-size:16px;line-height:1.1}
+  .nav-item i{display:none}
+  .teacher-card{flex:none;margin:0;padding:0 0 0 4px;border:0}
+  .teacher-card>div,.teacher-card .switch span{display:none}
+  .teacher-card .switch{display:grid;width:43px;height:42px;place-items:center;margin:0;padding:0;border-radius:9px;background:#f8eeee}
+  .teacher-card .switch:after{content:'Admin';color:#963846;font-size:9px;font-weight:700}
+  .teacher-card .switch[aria-pressed=true]{background:#963846}
+  .teacher-card .switch[aria-pressed=true]:after{color:white}
+  .main-area{max-width:none;margin:0;padding:0 17px 18px}
+  .exam-layout{grid-template-columns:minmax(0,1fr)}
+  .exam-main>.panel{padding:16px}
+  .question{padding:17px 0}
+  .option{min-height:42px;text-align:left;line-height:1.45}
+  .exam-submit-row{gap:10px;align-items:flex-start;flex-wrap:wrap}
+  .teacher-panel .form-field{display:grid;width:100%;margin:8px 0}
+  .teacher-panel input,.teacher-panel select,.teacher-panel textarea{max-width:100%}
+  .assignment-card{align-items:flex-start;flex-wrap:wrap}
+  .assignment-card-info{min-width:0;flex:1 1 calc(100% - 55px)}
+  .assignment-card .teacher-actions{width:100%;margin:8px 0 0;justify-content:flex-end}
+  .modal-backdrop{padding:8px}
+  .modal{width:100%;max-height:calc(100dvh - 16px);padding:22px 16px;border-radius:12px}
+  .modal-actions{flex-wrap:wrap}
+}
+@media(max-width:420px){
+  .main-area{padding-inline:12px}
+  .welcome-row h1{font-size:22px}
+  .page-heading h1{font-size:24px}
+  .assignment-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .assignment-summary>div{min-width:0;padding:9px 6px}
+  .assignment-summary small{font-size:6px;letter-spacing:.3px}
+  .exam-facts{gap:10px;padding:11px 6px}
+  .exam-facts span{font-size:8px}
+  .import-question{padding:10px}
+}
+
+@media(max-width:760px){.nav-item .mobile-nav-label{display:block;width:auto;font-size:8px;line-height:1.1}.sidebar .nav-item[data-action]{display:flex;flex:1;min-width:0;flex-direction:column;justify-content:center;gap:2px;padding:5px 2px;font-size:8px!important;line-height:1.15;text-align:center;white-space:nowrap}}
+.nav-item>span.mobile-nav-label{width:auto;font-size:inherit;text-align:left;color:inherit}
+
+@media(max-width:760px){.nav-item>span.mobile-nav-label{font-size:8px!important;width:auto;text-align:center;color:inherit}}
