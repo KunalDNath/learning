@@ -44,7 +44,7 @@
     if(Array.isArray(state.assignments))localStorage.setItem('syntaxStudio.assignments',JSON.stringify(state.assignments));
     if(state.examConfig)localStorage.setItem('syntaxStudio.examConfig',JSON.stringify(state.examConfig));
     if(response.apiVersion!==driveApiVersion)showCloudStatus('Drive backend is outdated — redeploy Code.gs v2.',true);
-    else showCloudStatus('Google Drive connected');return state;
+    else showCloudStatus('Google Drive connected · app v2');return state;
   }
   async function syncDriveState() {
     const state={assignments:store.get('assignments',[]),examConfig:store.get('examConfig',null)},files=[];
@@ -212,7 +212,8 @@
   function toast(message) { const box=$('#toast'); box.textContent=message; box.classList.add('show'); clearTimeout(toastTimeout); toastTimeout=setTimeout(()=>box.classList.remove('show'),2600); }
   function esc(value='') { return String(value).replace(/[&<>"']/g, ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
   function formatDate(value) { if(!value)return 'No due date'; const date=new Date(value); return Number.isNaN(date.getTime())?'No due date':`${date.toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Asia/Kolkata'})} IST`; }
-  function setTeacher(value) { teacherMode=value; document.body.classList.toggle('teacher-mode',value); $('#teacherToggle').setAttribute('aria-pressed',String(value)); $('#teacherToggle').setAttribute('aria-label',value?'Close admin portal':'Open admin portal'); renderAssignments(); renderExam(); }
+  function renderSafely(name,render){try{render();}catch(error){console.error(`${name} failed to render`,error);showCloudStatus(`${name} could not load. Reload the page.`,true);}}
+  function setTeacher(value) { teacherMode=value; document.body.classList.toggle('teacher-mode',value); $('#teacherToggle').setAttribute('aria-pressed',String(value)); $('#teacherToggle').setAttribute('aria-label',value?'Close admin portal':'Open admin portal'); renderSafely('Assignments',renderAssignments); renderSafely('Exam room',renderExam); }
   async function adminLogin() {
     if(driveApiUrl){
       let password=getDrivePassword();
@@ -483,5 +484,11 @@
   document.addEventListener('submit',e=>{if(e.target.id!=='examConfigForm')return;const form=new FormData(e.target),opens=String(form.get('opensAt')),closes=String(form.get('closesAt'));if(opens&&closes&&new Date(closes)<=new Date(opens)){e.preventDefault();e.stopImmediatePropagation();toast('The close time must be after the open time.');}},true);
   document.addEventListener('click',e=>{const view=e.target.closest('[data-view]');if(view){e.preventDefault();navigate(view.dataset.view);return}const topic=e.target.closest('[data-topic]');if(topic){showTopic(topic.dataset.topic);return}if(e.target.closest('[data-action="calculator"]'))calculator();});
   $$('.nav-item[data-view]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.view))); $('#teacherToggle').addEventListener('click',()=>{if(teacherMode)setTeacher(false);else adminLogin()}); $('#modalClose').addEventListener('click',closeModal); $('#modalBackdrop').addEventListener('click',e=>{if(e.target.id==='modalBackdrop')closeModal()}); document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()}); $('#addAssignment').addEventListener('click',addAssignmentModal);
-  cleanupExpiredPdfs(); setInterval(cleanupExpiredPdfs,60*60*1000); updateClock(); setInterval(updateClock,60000); if(!driveApiUrl&&!cloudApiBase)showCloudStatus('Local-only storage'); setTeacher(teacherMode); renderTopics(); renderAssignments(); renderExam(); renderExamHome(); renderSlideGrid();
+  cleanupExpiredPdfs(); setInterval(cleanupExpiredPdfs,60*60*1000); updateClock(); setInterval(updateClock,60000); if(!driveApiUrl&&!cloudApiBase)showCloudStatus('Local-only storage');
+  renderSafely('Practice questions',renderSlideGrid);
+  renderSafely('Learning content',renderTopics);
+  setTeacher(teacherMode);
+  renderSafely('Assignments',renderAssignments);
+  renderSafely('Exam room',renderExam);
+  renderSafely('Exam summary',renderExamHome);
 })();
