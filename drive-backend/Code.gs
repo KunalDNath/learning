@@ -69,6 +69,9 @@ function writeState_(state) {
   try { file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW); } catch (_) {}
   file.setContent(JSON.stringify(state));
   const liveIds = new Set((state.assignments || []).map(item => item.questionPdf && item.questionPdf.id).filter(Boolean));
+  for (const question of (state.examConfig && state.examConfig.questions) || []) {
+    if (question.image && question.image.id) liveIds.add(question.image.id);
+  }
   const liveSubmissionIds = new Set(Object.values(state.submissions || {}).map(item => item.attachmentId).filter(Boolean));
   for (const [key, driveId] of Object.entries(props.getProperties())) {
     const isQuestion = key.startsWith('PDF_'), isSubmission = key.startsWith('SUB_');

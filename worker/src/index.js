@@ -54,7 +54,8 @@ export default {
         const uploadedAt = Date.now();
         const contentType = request.headers.get("Content-Type") || "application/pdf";
         if (!["application/pdf", "image/png", "image/jpeg"].includes(contentType)) return json({ error: "Only PDF, PNG, or JPG attachments are supported" }, 400, cors);
-        await env.PDFS.put(id, request.body, { httpMetadata: { contentType }, customMetadata: { uploadedAt: String(uploadedAt), expiresAt: String(uploadedAt + 10 * 24 * 60 * 60 * 1000) } });
+        const lifetime = id.startsWith("exam-image-") ? 10 * 365 * 24 * 60 * 60 * 1000 : 10 * 24 * 60 * 60 * 1000;
+        await env.PDFS.put(id, request.body, { httpMetadata: { contentType }, customMetadata: { uploadedAt: String(uploadedAt), expiresAt: String(uploadedAt + lifetime) } });
         return json({ ok: true }, 200, cors);
       }
       if (url.pathname === "/api/admin/exam-config" && request.method === "PUT") {
