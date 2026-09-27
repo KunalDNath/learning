@@ -39,6 +39,8 @@ The `drive-backend/Code.gs` Google Apps Script stores assignment metadata, exam 
 4. Paste that URL into `window.SYNTAX_STUDIO_DRIVE_URL` in `cloud-config.js`, publish the site, and open it from the published URL.
 5. Open **Admin portal**, enter the same password, and create an assignment. The first save creates a `Syntax Studio shared data` folder in your Drive. Other browsers can then see the shared assignments by opening the published site and visiting Tasks.
 
+After editing `Code.gs`, the deployed `/exec` URL keeps running its previously deployed version until you publish an update. Use **Deploy → Manage deployments → Edit → Version: New version → Deploy**. To check the read endpoint, open `<your /exec URL>?action=state` in a new browser; it should return JSON containing the shared `assignments` list.
+
 The web app must be reachable by anyone so the learner can read course data; write operations require the admin password. Question PDFs are stored in that Drive folder and served through the script. The admin password is held in the current browser tab's session storage. On first admin sign-in, assignments already saved in that browser are copied to Drive if the shared assignment list is empty.
 
 Learner submissions and learning progress remain in each learner browser's local storage. The exam answer key is delivered to the client for scoring, so this app is not suitable for a high-stakes or proctored exam. If the Drive URL is blank, the app falls back to browser-only storage. The earlier Cloudflare Worker configuration remains available as an alternate backend.

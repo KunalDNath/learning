@@ -5,6 +5,13 @@ function doGet(e) {
   try {
     if (action === 'state') result = { ok: true, state: readState_() };
     else if (action === 'file') result = { ok: true, file: readFile_(e.parameter.id) };
+    else if (action === 'receipt') {
+      const cache = CacheService.getScriptCache();
+      const key = 'receipt_' + String(e.parameter.probe || '');
+      const receipt = cache.get(key);
+      if (receipt) cache.remove(key);
+      result = { ok: true, receipt: receipt ? JSON.parse(receipt) : null };
+    }
     else throw new Error('Unknown action');
   } catch (error) { result = { ok: false, error: error.message }; }
   const body = JSON.stringify(result).replace(/</g, '\\u003c');
@@ -17,8 +24,9 @@ function doGet(e) {
 
 function doPost(e) {
   let result;
+  let input = {};
   try {
-    const input = JSON.parse((e.parameter && e.parameter.payload) || (e.postData && e.postData.contents) || '{}');
+    input = JSON.parse((e.parameter && e.parameter.payload) || (e.postData && e.postData.contents) || '{}');
     if (!constantTimeEqual_(String(input.password || ''), PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD') || '')) throw new Error('Invalid admin password');
     if (input.action === 'save') {
       const state = input.state || {};
@@ -28,9 +36,8 @@ function doPost(e) {
     } else if (input.action === 'login') result = { ok: true };
     else throw new Error('Unknown action');
   } catch (error) { result = { ok: false, error: error.message }; }
-  const message = JSON.stringify({ type: 'syntax-studio-drive', ...result }).replace(/</g, '\\u003c');
-  return HtmlService.createHtmlOutput('<!doctype html><script>parent.postMessage(' + message + ', "*");</script>')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  if (input.probe) CacheService.getScriptCache().put('receipt_' + input.probe, JSON.stringify(result), 60);
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
 }
 
 function readState_() {

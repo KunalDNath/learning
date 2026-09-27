@@ -22,15 +22,17 @@
     });
   }
   function drivePost(payload) {
-    return new Promise((resolve,reject)=>{
-      const frame=document.createElement('iframe'),form=document.createElement('form'),field=document.createElement('input');
-      const target=`syntaxDrivePost${Date.now()}${Math.floor(Math.random()*10000)}`;frame.name=target;frame.hidden=true;frame.src='about:blank';
-      form.method='POST';form.action=driveApiUrl;form.target=target;form.hidden=true;field.name='payload';field.value=JSON.stringify(payload);form.append(field);
-      let done=false;const cleanup=()=>{window.removeEventListener('message',receive);clearTimeout(timeout);form.remove();frame.remove();};
-      const receive=event=>{if(event.source!==frame.contentWindow||event.data?.type!=='syntax-studio-drive')return;done=true;cleanup();event.data.ok?resolve(event.data):reject(new Error(event.data.error||'Drive save failed'));};
-      const timeout=setTimeout(()=>{if(!done){cleanup();reject(new Error('Drive save timed out'));}},30000);
-      window.addEventListener('message',receive);document.body.append(frame,form);form.submit();
-    });
+    const probe=`${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const body=new URLSearchParams({payload:JSON.stringify({...payload,probe})});
+    return fetch(driveApiUrl,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},body})
+      .then(async()=>{
+        for(let attempt=0;attempt<20;attempt++){
+          await new Promise(resolve=>setTimeout(resolve,500));
+          const result=await driveJsonp({action:'receipt',probe});
+          if(result.receipt){if(!result.receipt.ok)throw new Error(result.receipt.error||'Drive rejected the request');return result.receipt;}
+        }
+        throw new Error('Google Drive did not confirm the request. Update the Apps Script deployment to the latest version and try again.');
+      });
   }
   async function loadDriveState() {
     if(!driveApiUrl)return;
